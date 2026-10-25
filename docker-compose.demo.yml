@@ -1,0 +1,15 @@
+# Local project demonstration only. Adds demo accounts to the existing database.
+services:
+  app1:
+    environment:
+      SERVER_PORT: "8080"
+      SIS_DEFAULT_DEMO_ENABLED: "true"
+      SIS_DEFAULT_DEMO_PASSWORD: ${SIS_DEFAULT_DEMO_PASSWORD:?Set SIS_DEFAULT_DEMO_PASSWORD}
+  app2:
+    environment:
+      SERVER_PORT: "8080"
+      SIS_DEFAULT_DEMO_ENABLED: "false"
+  app3:
+    environment:
+      SERVER_PORT: "8080"
+      SIS_DEFAULT_DEMO_ENABLED: "false"

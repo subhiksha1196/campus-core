@@ -1,0 +1,25 @@
+const {JSDOM,VirtualConsole}=require('jsdom');
+const {within,fireEvent,waitFor}=require('@testing-library/dom');
+const esbuild=require('esbuild');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+(async()=>{
+ const errors=[];const vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc});
+ const {window}=dom;global.window=window;global.document=window.document;
+ const requests=[];window.fetch=async(url,opts={})=>{requests.push(url);if(url.includes('feedback'))return {ok:true,status:200,json:async()=>({})};const q=new URL(url,'http://localhost').searchParams.get('q');if(q==='fail')return {ok:false,status:503,json:async()=>({message:'Search temporarily unavailable'})};return {ok:true,status:200,json:async()=>({results:[{id:'S101',label:'Aarav Sharma',sub:'CSE · Year 2'}],tookMs:1})};};
+ const result=await esbuild.build({stdin:{contents:`import React,{useState} from 'react';import{createRoot}from'react-dom/client';import Autocomplete from './src/components/Autocomplete.jsx';function Test(){const[a,A]=useState(''),[b,B]=useState('');return <><Autocomplete label="Courses" value={a} onText={A} options={[{id:'C1',label:'Data Structures',sub:'CS201'}]} onPick={r=>window.picked=r.id}/><Autocomplete type="student" label="Recipients" value={b} onText={B} multiple selectValue={r=>r.id}/></>};createRoot(document.getElementById('root')).render(<Test/>);`,resolveDir:path.resolve(__dirname,'..'),loader:'jsx'},bundle:true,write:false,format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"development"'}});
+ window.eval(result.outputFiles[0].text);const ui=within(window.document.body);const settle=()=>new Promise(r=>setTimeout(r,40));
+ await waitFor(()=>assert.ok(ui.getByRole('combobox',{name:'Courses'})));
+ const course=ui.getByRole('combobox',{name:'Courses'});await settle();fireEvent.focusIn(course);fireEvent.change(course,{target:{value:'data'}});
+ await waitFor(()=>assert.ok(ui.getByRole('option',{name:/Data Structures/})));
+ fireEvent.keyDown(course,{key:'ArrowDown'});await settle();fireEvent.keyDown(course,{key:'Enter'});await settle();
+ assert.equal(window.picked,'C1');assert.equal(course.value,'Data Structures');assert.equal(course.getAttribute('aria-expanded'),'false');
+ const people=ui.getByRole('combobox',{name:'Recipients'});fireEvent.focusIn(people);fireEvent.change(people,{target:{value:'aar'}});
+ await waitFor(()=>assert.ok(ui.getByRole('option',{name:/Aarav/})));fireEvent.click(ui.getByRole('option',{name:/Aarav/}));await settle();assert.equal(people.value,'S101, ');
+ fireEvent.change(people,{target:{value:'S101, aa'}});await waitFor(()=>assert.ok(ui.getByRole('option',{name:/Aarav/})));fireEvent.click(ui.getByRole('option',{name:/Aarav/}));await settle();assert.equal(people.value,'S101, ');
+ fireEvent.change(people,{target:{value:'fail'}});await waitFor(()=>assert.ok(ui.getByText('Search temporarily unavailable')));assert.equal(ui.queryByRole('option'),null);
+ fireEvent.keyDown(people,{key:'Escape'});await settle();assert.equal(people.getAttribute('aria-expanded'),'false');
+ assert.ok(requests.some(x=>x.includes('type=student')));assert.deepEqual(errors,[]);
+ dom.window.close();console.log('PASS: local and remote suggestions, keyboard selection, multi-recipient deduplication, visible API errors and Escape dismissal.');
+})().catch(e=>{console.error(e);process.exitCode=1});

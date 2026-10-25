@@ -1,0 +1,53 @@
+server:
+  port: 8080
+  forward-headers-strategy: native   # trust X-Forwarded-For from the load balancer (per-client rate limits)
+  tomcat:
+    threads:
+      max: 400
+
+spring:
+  application:
+    name: sis-backend
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/sis}
+      auto-index-creation: true
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+
+sis:
+  instance-id: ${INSTANCE_ID:${HOSTNAME:local}}   # which application server answered (X-Served-By header)
+  shortener:
+    base-url: ${SHORT_BASE_URL:http://localhost:8080}
+    cache-ttl-seconds: 3600
+    id-offset: 56800235584        # 62^6 -> codes are at least 7 characters
+  crawler:
+    base-url: ${CRAWLER_BASE_URL:http://localhost:8080}
+    default-threads: 8
+    request-timeout-ms: 5000
+  simulator:                       # simulated university portal / scholarships / internships
+    latency-ms: 100                # artificial latency per page (makes parallel crawling measurable)
+    pages-per-source: 20
+    listings-per-page: 10
+    error-rate: 0.0                # e.g. 0.1 = 10% of pages return 503 (tests crawler retries)
+  sharding:
+    shards: shard0,shard1,shard2
+    virtual-nodes: 150
+  academic:                        # courses, registration, attendance, grades, timetable, search
+    seed-on-startup: true          # create demo data when there are no courses yet (never touches existing data)
+    seed-students: 120
+    notifications: true            # send notifications (registered, attendance below 75%, marks posted)
+    search-refresh-ms: 60000       # how often the autocomplete index is rebuilt from the shards
+    search-cache-ttl-seconds: 120  # autocomplete results cached in Redis (also cleared on every index rebuild)
+  auth:
+    demo-password: ${SIS_DEMO_PASSWORD:}
+  rate-limit:
+    api-per-minute: ${SIS_API_LIMIT:600}
+    auth-per-minute: ${SIS_AUTH_LIMIT:20}

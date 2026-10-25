@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------
+# Secrets and local config (never commit)
+# ---------------------------------------------------------------
+.env
+*.local
+
+# ---------------------------------------------------------------
+# Removed from the public repo (the `git rm --cached` targets)
+# ---------------------------------------------------------------
+# archives
+backend.zip
+frontend/src.zip
+*.zip
+# stale code and generated roster
+_removed-token-bucket/
+STUDENT-ROSTER.csv
+# patch/install notes, replaced by the root README
+DEMO-LOGIN-SETUP.md
+frontend/README.md
+frontend/VALIDATION.md
+# raw load-test output (summary.md and the PNG graphs are kept)
+load-tests/results/*.csv
+load-tests/results/*.json
+
+# ---------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------
+backend/target/
+target/
+*.class
+*.jar
+*.log
+node_modules/
+dist/
+frontend/test-results/
+
+# ---------------------------------------------------------------
+# IDE / OS / Python
+# ---------------------------------------------------------------
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+.venv/
